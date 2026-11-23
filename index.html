@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#100d2b">
+<title>BUBBLES — Endless Pop</title>
+<style>
+:root{--bg:#100d2b;--panel:rgba(255,255,255,.10);--line:rgba(255,255,255,.18);--white:#fff}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--white);touch-action:manipulation}
+body{background:radial-gradient(ellipse at 50% 0%,#3a246c 0%,#19133e 42%,#09091d 100%)}
+#game{position:fixed;inset:0;width:100%;height:100%;display:block}
+.vignette{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,transparent 35%,rgba(3,2,17,.38) 100%)}
+.hud{position:fixed;top:max(14px,env(safe-area-inset-top));left:0;right:0;padding:0 16px;display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none;gap:10px}
+.stat{min-width:92px;padding:10px 15px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(145deg,rgba(255,255,255,.17),rgba(255,255,255,.055));box-shadow:0 10px 28px #0005,inset 0 1px 0 #ffffff30;backdrop-filter:blur(14px);text-align:center}
+.stat small{display:block;font-size:10px;letter-spacing:2px;color:#c8c2f3;font-weight:800}
+.stat strong{display:block;font-size:23px;line-height:1.2;font-weight:900;text-shadow:0 2px 12px #a78bfa66}
+.top-actions{display:flex;gap:8px;pointer-events:auto}
+.icon-btn{width:43px;height:43px;border-radius:15px;border:1px solid var(--line);background:linear-gradient(145deg,#ffffff2b,#ffffff0b);color:white;font-size:18px;box-shadow:0 8px 20px #0005;backdrop-filter:blur(12px)}
+.brand{position:fixed;top:94px;left:0;right:0;text-align:center;pointer-events:none}
+.brand h1{margin:0;font-size:clamp(29px,8vw,44px);font-weight:1000;letter-spacing:8px;background:linear-gradient(180deg,#fff 15%,#b9a7ff 55%,#7a55d8);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 5px 15px #9b75ff66)}
+.brand p{margin:2px 0;color:#c6bdf1;font-size:10px;letter-spacing:4px;font-weight:800}
+.bottom{position:fixed;bottom:max(18px,env(safe-area-inset-bottom));left:0;right:0;text-align:center;pointer-events:none}
+.hint{font-size:12px;color:#ded9ffb8;letter-spacing:1px;text-shadow:0 2px 8px #000}
+.progress-wrap{width:min(260px,70vw);height:6px;margin:10px auto 0;background:#ffffff20;border-radius:99px;overflow:hidden}
+#progress{height:100%;width:0;background:linear-gradient(90deg,#58e7ff,#b18aff,#ff80ce);border-radius:99px;transition:width .2s}
+.overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:22px;background:#08071999;backdrop-filter:blur(12px);z-index:5}
+.card{width:min(390px,100%);padding:28px 22px;border:1px solid #ffffff30;border-radius:30px;text-align:center;background:linear-gradient(145deg,rgba(68,51,125,.88),rgba(18,15,49,.94));box-shadow:0 25px 80px #0009,inset 0 1px 0 #ffffff30}
+.card h2{margin:0 0 8px;font-size:30px;letter-spacing:3px}
+.card p{color:#d4cef5;line-height:1.55;font-size:14px}
+.primary{width:100%;border:0;border-radius:17px;padding:15px 20px;margin-top:12px;color:#1a123b;font-size:15px;font-weight:1000;letter-spacing:2px;background:linear-gradient(100deg,#70edff,#c5a1ff 55%,#ff9bd9);box-shadow:0 9px 25px #9a78ff55,inset 0 1px 0 #fff}
+.secondary{background:#ffffff14;color:white;border:1px solid #ffffff2b;box-shadow:none}
+.hidden{display:none!important}
+.badge-row{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:17px 0}
+.pill{font-size:11px;padding:7px 11px;border:1px solid #ffffff28;border-radius:99px;color:#e7ddff;background:#ffffff0d}
+#toast{position:fixed;top:45%;left:0;right:0;text-align:center;font-weight:1000;font-size:26px;letter-spacing:2px;color:#fff;text-shadow:0 3px 20px #b68aff;opacity:0;pointer-events:none;z-index:3}
+@keyframes toast{0%{opacity:0;transform:scale(.7)}20%{opacity:1;transform:scale(1.12)}75%{opacity:1}100%{opacity:0;transform:translateY(-35px)}}
+#toast.show{animation:toast .8s ease-out}
+@media(min-width:700px){.brand{top:105px}.stat{min-width:120px}.stat strong{font-size:28px}}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas><div class="vignette"></div>
+<div class="hud">
+  <div class="stat"><small>SCORE</small><strong id="score">0</strong></div>
+  <div class="stat"><small>BEST</small><strong id="best">0</strong></div>
+  <div class="top-actions">
+    <button class="icon-btn" id="soundBtn" aria-label="Toggle sound">♫</button>
+    <button class="icon-btn" id="pauseBtn" aria-label="Pause">Ⅱ</button>
+  </div>
+</div>
+<div class="brand"><h1>BUBBLES</h1><p>ENDLESS POP EXPERIENCE</p></div>
+<div class="bottom"><div class="hint" id="hint">TAP THE BUBBLES • DON'T LET THEM ESCAPE</div><div class="progress-wrap"><div id="progress"></div></div></div>
+<div id="toast"></div>
+<div class="overlay" id="startScreen">
+  <div class="card">
+    <h2>READY TO POP?</h2>
+    <p>Tap the floating bubbles, build combos and chase your highest score. Special bubbles bring big rewards!</p>
+    <div class="badge-row"><span class="pill">✦ ENDLESS MODE</span><span class="pill">◉ POWER UPS</span><span class="pill">♫ SOUND FX</span></div>
+    <button class="primary" id="startBtn">LET'S PLAY</button>
+    <p style="font-size:11px;margin-bottom:0">Tip: Golden bubbles are worth 5× points.</p>
+  </div>
+</div>
+<div class="overlay hidden" id="pauseScreen">
+  <div class="card"><h2>PAUSED</h2><p>Take a breath. Your bubbles are waiting.</p><button class="primary" id="resumeBtn">RESUME</button><button class="primary secondary" id="restartBtn">RESTART</button></div>
+</div>
+<div class="overlay hidden" id="overScreen">
+  <div class="card"><h2>GAME OVER</h2><p>Your final score</p><div id="finalScore" style="font-size:48px;font-weight:1000;margin:5px 0 12px">0</div><p id="bestMsg">Keep popping to beat your best!</p><button class="primary" id="againBtn">PLAY AGAIN</button><button class="primary secondary" id="homeBtn">MAIN MENU</button></div>
+</div>
+<script>
+(()=>{
+'use strict';
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+const $=id=>document.getElementById(id);
+let W=0,H=0,dpr=1,last=0,raf=0,running=false,paused=false,started=false;
+let bubbles=[],particles=[],floaters=[],score=0,best=Number(localStorage.getItem('bubblesBest')||0);
+let elapsed=0,spawnClock=0,combo=0,comboUntil=0,soundOn=true,audioCtx=null,shake=0;
+$('best').textContent=best;
+const colors=['#65e8ff','#9b83ff','#ff86d5','#72ffc8','#ffd36e','#8bb8ff'];
+function resize(){dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;canvas.width=Math.floor(W*dpr);canvas.height=Math.floor(H*dpr);canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0)}
+addEventListener('resize',resize);resize();
+function rand(a,b){return a+Math.random()*(b-a)}
+function sound(freq=520,duration=.08,type='sine',volume=.045){if(!soundOn)return;try{audioCtx=audioCtx||new(window.AudioContext||window.webkitAudioContext)();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=type;o.frequency.setValueAtTime(freq,audioCtx.currentTime);o.frequency.exponentialRampToValueAtTime(Math.max(80,freq*.55),audioCtx.currentTime+duration);g.gain.setValueAtTime(volume,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+duration);o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+duration)}catch(e){}}
+function toast(text){$('toast').textContent=text;$('toast').classList.remove('show');void $('toast').offsetWidth;$('toast').classList.add('show')}
+function newBubble(){
+ const r=rand(19,34),x=rand(r+8,W-r-8),difficulty=Math.min(1,elapsed/100);
+ const roll=Math.random();let type=roll<.055?'gold':roll<.105?'rainbow':roll<.135?'bomb':'normal';
+ bubbles.push({x,y:H+r+8,r,vy:rand(34,65)+difficulty*70, vx:rand(-13,13),hue:rand(0,360),type,phase:rand(0,6.28),life:0});
+}
+function burst(x,y,color,n=13){for(let i=0;i<n;i++){let a=rand(0,Math.PI*2),s=rand(45,230);particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rand(.35,.75),max:.75,r:rand(1.5,4),color})}}
+function addScore(n){score+=n;$('score').textContent=score;if(score>best){best=score;localStorage.setItem('bubblesBest',best);$('best').textContent=best}}
+function pop(b){
+ const color=b.type==='gold'?'#ffd66e':b.type==='rainbow'?'#e4a7ff':colors[Math.floor(Math.random()*colors.length)];
+ let points=b.type==='gold'?50:b.type==='rainbow'?25: b.type==='bomb'?15:10;
+ const now=performance.now();combo=now<comboUntil?combo+1:1;comboUntil=now+850;
+ const multiplier=Math.min(5,1+Math.floor(combo/5));addScore(points*multiplier);
+ burst(b.x,b.y,color,b.type==='bomb'?30:17);sound(b.type==='gold'?900: b.type==='bomb'?180:560,.11,b.type==='bomb'?'triangle':'sine',.055);
+ if(combo>=5){toast('+'+points*multiplier+'  ×'+multiplier+' COMBO!');}
+ if(b.type==='bomb'){shake=9;bubbles=bubbles.filter(o=>{if(o!==b&&Math.hypot(o.x-b.x,o.y-b.y)<b.r*3){burst(o.x,o.y,'#ffb36b',8);addScore(5);return false}return true})}
+ else if(b.type==='gold')toast('GOLDEN BONUS!');
+ else if(b.type==='rainbow')toast('RAINBOW BONUS!');
+}
+function drawBubble(b){
+ const pulse=1+Math.sin(b.phase)*.025,r=b.r*pulse;
+ ctx.save();ctx.translate(b.x,b.y);ctx.rotate(Math.sin(b.phase*.6)*.08);
+ const hue=b.hue;
+ let base=b.type==='gold'?'#ffcf58':b.type==='rainbow'?`hsl(${(hue+elapsed*80)%360} 95% 68%)`:colors[Math.floor((hue/60)%colors.length)];
+ let grad=ctx.createRadialGradient(-r*.35,-r*.42,r*.04,0,0,r*1.15);
+ grad.addColorStop(0,'#ffffff');grad.addColorStop(.13,b.type==='rainbow'?'#ffeaff':base);
+ grad.addColorStop(.48,base);grad.addColorStop(.78,b.type==='gold'?'#b87522':'#463b9b');grad.addColorStop(1,'#171333');
+ ctx.shadowColor=base;ctx.shadowBlur=18;ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.fillStyle=grad;ctx.fill();
+ ctx.shadowBlur=0;ctx.lineWidth=1.4;ctx.strokeStyle='#ffffff99';ctx.stroke();
+ ctx.beginPath();ctx.ellipse(-r*.28,-r*.43,r*.23,r*.105,-.55,0,Math.PI*2);ctx.fillStyle='#ffffffd9';ctx.fill();
+ ctx.beginPath();ctx.ellipse(r*.27,r*.38,r*.10,r*.045,.7,0,Math.PI*2);ctx.fillStyle='#ffffff75';ctx.fill();
+ if(b.type!=='normal'){ctx.font=`bold ${r*.72}px system-ui`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#fff';ctx.shadowColor='#fff';ctx.shadowBlur=8;ctx.fillText(b.type==='gold'?'★':b.type==='rainbow'?'✦':'✹',0,1)}
+ ctx.restore();
+}
+function drawBackground(t){ctx.clearRect(0,0,W,H);for(let i=0;i<24;i++){let x=(i*137.5+Math.sin(t*.25+i)*22)%W,y=(i*91.7+t*(8+i%4)*.3)%H;ctx.beginPath();ctx.arc(x,y,(i%3)+.5,0,Math.PI*2);ctx.fillStyle='#ffffff'+(i%2?'18':'0d');ctx.fill()}}
+function update(dt){
+ elapsed+=dt;spawnClock+=dt;
+ let interval=Math.max(.32,1.05-elapsed*.004);
+ while(spawnClock>interval){spawnClock-=interval;newBubble();if(elapsed>25&&Math.random()<.25)newBubble()}
+ for(let i=bubbles.length-1;i>=0;i--){let b=bubbles[i];b.life+=dt;b.phase+=dt*2;b.y-=b.vy*dt;b.x+=b.vx*dt+Math.sin(b.phase)*7*dt;
+ if(b.x<b.r||b.x>W-b.r)b.vx*=-1;
+ if(b.y+b.r<0){bubbles.splice(i,1);endGame();return}
+ }
+ for(let i=particles.length-1;i>=0;i--){let p=particles[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=260*dt;p.life-=dt;if(p.life<=0)particles.splice(i,1)}
+ if(performance.now()>comboUntil)combo=0;
+ $('progress').style.width=(Math.min(100,elapsed/60*100))+'%';
+}
+function render(t){drawBackground(t/1000);ctx.save();if(shake>0){ctx.translate(rand(-shake,shake),rand(-shake,shake));shake*=.86;if(shake<.4)shake=0}
+ bubbles.forEach(drawBubble);
+ particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life/p.max);ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle=p.color;ctx.fill()});ctx.globalAlpha=1;ctx.restore()}
+function loop(ts){if(!running)return;let dt=Math.min((ts-last)/1000||0,.035);last=ts;if(!paused)update(dt);render(ts);raf=requestAnimationFrame(loop)}
+function start(){cancelAnimationFrame(raf);bubbles=[];particles=[];score=0;elapsed=0;spawnClock=0;combo=0;paused=false;running=true;started=true;$('score').textContent='0';$('progress').style.width='0%';$('startScreen').classList.add('hidden');$('pauseScreen').classList.add('hidden');$('overScreen').classList.add('hidden');$('pauseBtn').textContent='Ⅱ';last=performance.now();raf=requestAnimationFrame(loop);sound(660,.12)}
+function endGame(){if(!running)return;running=false;cancelAnimationFrame(raf);$('finalScore').textContent=score;$('bestMsg').textContent=score>=best?'NEW PERSONAL BEST!':'Best score: '+best;$('overScreen').classList.remove('hidden');sound(160,.35,'sawtooth',.04)}
+function togglePause(){if(!running)return;paused=!paused;$('pauseScreen').classList.toggle('hidden',!paused);$('pauseBtn').textContent=paused?'▶':'Ⅱ';sound(paused?300:600,.07)}
+function pointer(e){if(!running||paused)return;const rect=canvas.getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top;let hit=-1;
+ for(let i=bubbles.length-1;i>=0;i--){let b=bubbles[i];if(Math.hypot(x-b.x,y-b.y)<=b.r+9){hit=i;break}}
+ if(hit>=0){let b=bubbles.splice(hit,1)[0];pop(b)}else{combo=0}}
+canvas.addEventListener('pointerdown',e=>{e.preventDefault();pointer(e)});
+$('startBtn').onclick=start;$('againBtn').onclick=start;$('resumeBtn').onclick=togglePause;$('pauseBtn').onclick=togglePause;$('restartBtn').onclick=start;
+$('homeBtn').onclick=()=>{$('overScreen').classList.add('hidden');$('startScreen').classList.remove('hidden');$('score').textContent='0';bubbles=[];particles=[]};
+$('soundBtn').onclick=()=>{soundOn=!soundOn;$('soundBtn').textContent=soundOn?'♫':'♪';$('soundBtn').style.opacity=soundOn?'1':'.55';if(soundOn)sound(600,.08)};
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&running&&!paused)togglePause()});
+render(0);
+})();
+</script>
+</body>
+</html>
